@@ -3,6 +3,7 @@ import sys
 import snap
 import numpy as np
 import Queue
+from scipy.misc import logsumexp
 
 class Node(object):
 	def __init__(self, id, inEdges, outEdges):
@@ -16,7 +17,7 @@ class Edge(object):
 		self.node1 = node1
 		self.node2 = node2
 		self.probabilities = probabilities
-		self.estimates = np.zeros(len(self.probabilities))
+		self.estimates = np.random.rand(len(self.probabilities))
 
 class Graph(object):
 	def __init__(self, nodes, edges):
@@ -29,6 +30,13 @@ class Item(object):
 		self.id = id
 		self.topicDistribution = topicDistribution
 		self.topicEstimates = np.zeros(len(self.topicDistribution))
+
+class CascadeLog(object):
+	def __init__(self, node1, node2, edge, time):
+		self.node1 = node1
+		self.node2 = node2
+		self.edge = edge
+		self.time = time
 
 def generateGraph(nodes, topics, density=0.5):
 	graph = Graph([],[])
@@ -49,10 +57,11 @@ def generateGraph(nodes, topics, density=0.5):
 	return graph
 
 class TIC(object):
-	def __init__(self, graph, numTopics, numItems):
+	def __init__(self, graph, numTopics, items):
 		self.graph = graph
 		self.numTopics = numTopics
-		self.numItems = numItems
+		self.numItems = len(items)
+		self.items = items
 		
 
 	def diffusion(self, seeds, item, isEnvironment, returnCascade=False):
@@ -60,7 +69,7 @@ class TIC(object):
 		influencedNodes = seeds[:]
 		activeNodes = Queue.Queue()
 		influencedMap = {x:0 for x in range(len(self.graph.nodes))}
-		activeEdges = []
+		edgeCascade = {x:0 for x in range(len(self.graph.edges))}
 		for seed in seeds:
 			activeNodes.put([seed,0])
 			influencedMap[seed] = 1
@@ -69,16 +78,16 @@ class TIC(object):
 			for edge, node in self.graph.nodes[currentNode].outEdges.items():
 				if influencedMap[node] == 0:
 					if isEnvironment:
-						dot = np.dot(self.graph.edges[edge].probabilities, item)
+						dot = np.dot(self.graph.edges[edge].probabilities, item.topicDistribution)
 					else:
-						np.dot(self.graph.edges[edge].estimates, item)				
+						dot = np.dot(self.graph.edges[edge].estimates, item.topicEstimates)				
 					if dot > possibleWorld[edge]:
 						activeNodes.put([node, timestep+1])
 						influencedNodes.append(node)
 						influencedMap[node] = 1
-						activeEdges.append(edge)
+						edgeCascade[edge] = 1
 		if returnCascade:
-			return len(influencedNodes), activeEdges
+			return len(influencedNodes), edgeCascade
 		else:
 			return len(influencedNodes)
 
@@ -111,7 +120,7 @@ class TIC(object):
 		return seeds, maximumSpread
 
 	def generatePossibleWorld(self):
-		coinFlips = np.random.rand(len(graph.edges))
+		coinFlips = np.random.rand(len(self.graph.edges))
 		return coinFlips
 
 
@@ -122,7 +131,7 @@ class MAB(object):
 
 	def explore(self, item):
 		seeds = np.random.choice(len(self.tic.graph.nodes), self.budget, replace=False)
-		return seeds
+		return seeds.tolist()
 
 	def exploit(self, item):
 		seeds,_ = self.tic.findBestSeeds(item, self.budget, isEnvironment=False)
@@ -133,17 +142,41 @@ class MAB(object):
 			seeds = self.explore(item)
 		else:
 			seeds = self.exploit(item)
-		spread, activeEdges = self.tic.diffusion(self, seeds=seeds, item=item, isEnvironment=True, returnCascade=True)
-		return activeEdges
+		spread, cascade = self.tic.diffusion(seeds=seeds, item=item, isEnvironment=True, returnCascade=True)
+		return cascade
 
-	def learner(self, iterations, epsilon, item):
-
+	def learner(self, iterations, epsilon):
+		pi = np.random.rand(numTopics)
+		pi = np.log(pi/sum(pi))
+		edgeActivation = {x:{i:0.0 for i in range(self.tic.numItems)} for x in range(len(self.tic.graph.edges))}
 		for t in range(iterations):
-			activeEdges = self.epsilonGreedy(epsilon, item)
+			for i in range(self.tic.numItems):
+				cascade = self.epsilonGreedy(epsilon, self.tic.items[i])
+				cascadeLogProbPositive = np.zeros(self.tic.numTopics)
+				cascadeLogProbNegative = np.zeros(self.tic.numTopics)
+				for edge, isActive in cascade.items():
+					if isActive == 1:
+						cascadeLogProbPositive += np.log(self.tic.graph.edges[edge].estimates)
+						edgeActivation[edge][i] += 1
+					else:
+						cascadeLogProbNegative += np.log(1. - self.tic.graph.edges[edge].estimates)
+				self.tic.items[i].topicEstimates = (pi + cascadeLogProbPositive + cascadeLogProbNegative)
+				self.tic.items[i].topicEstimates = np.exp(self.tic.items[i].topicEstimates - logsumexp(self.tic.items[i].topicEstimates))
+			pi = np.sum([self.tic.items[i].topicEstimates for i in range(self.tic.numItems)],0)/self.tic.numItems
+			normalizer = pi[:]*self.tic.numItems
+			pi = np.log(pi)
+			for edge in range(len(self.tic.graph.edges)):
+				self.tic.graph.edges[i].estimates = np.sum([(self.tic.items[i].topicEstimates * edgeActivation[edge][i])/(t+1) for i in range(self.tic.numItems)],0)/normalizer
 
 
 
 
-graph = generateGraph(100,2, density=0.2)
-tic = TIC(graph, 2)
-print tic.findBestSeeds(np.array([0.5, 0.5]), 3)
+itemList = []
+numItems = 2
+numTopics = 3
+for i in range(numItems):
+	itemDist = np.random.rand(numTopics)
+	itemList.append(Item(i, itemDist/sum(itemDist)))
+tic = TIC(generateGraph(100, numTopics, density=0.1), numTopics, itemList)
+mab = MAB(tic, numTopics)
+print mab.learner(10, 1)
