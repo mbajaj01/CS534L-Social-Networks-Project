@@ -40,7 +40,7 @@ def generateGraph(nodes, topics, density=0.5):
 		node1 = edge[0]
 		node2 = edge[1]
 		probabilities = np.random.rand(topics)
-		G.add_edges_from([(node1, node2, {'probabilities': probabilities, 'estimates': np.random.rand(topics)})])
+		G.add_edges_from([(node1, node2, {'probabilities': probabilities, 'estimates': np.random.rand(topics), 'average': np.zeros(topics)})])
 	return G
 
 class TIC(object):
@@ -49,7 +49,6 @@ class TIC(object):
 		self.numTopics = numTopics
 		self.numItems = len(items)
 		self.items = items
-		nx.set_edge_attributes(self.graph, {e:np.zeros(self.tic.numItems) for e in self.tic.graph.edges}, 'totalActivations')
 
 	def generatePossibleWorld(self):
 		coinFlips = np.random.rand(self.graph.number_of_nodes(), self.graph.number_of_nodes())
@@ -73,8 +72,8 @@ class TIC(object):
 		while not activeNodes.empty():
 			currentNode, timestep = activeNodes.get()
 			for node in self.graph.successors(currentNode):
-				self.graph.node[node]['influencedNeighbours'][item.id][currentNode] = True
 				if not self.graph.node[node]['isInfluenced'][item.id]:
+					self.graph.node[node]['influencedNeighbours'][item.id][currentNode] = True
 					if isEnvironment:
 						dot = np.dot(self.graph.edges[currentNode, node]['probabilities'], item.topicDistribution)
 					else:
@@ -268,13 +267,15 @@ class MAB(object):
 		spread = self.tic.diffusion(seeds=seeds, item=item, isEnvironment=True)
 		return seeds
 
-	def learner1(self, iterations, epsilon, EMiter = 20):
+	def learner(self, iterations, epsilon, EMiter = 20):
+		nx.set_edge_attributes(self.tic.graph, {e:np.zeros(self.tic.numItems) for e in self.tic.graph.edges}, 'totalActivations')
+		numUpdates = {e:1 for e in self.tic.graph.edges}
 		pi = np.random.rand(self.tic.numTopics)
 		pi = np.log(pi/sum(pi))
-		nx.set_edge_attributes(self.tic.graph, {e:np.zeros(self.tic.numItems) for e in self.tic.graph.edges}, 'totalActivations')
 		for t in range(iterations):
 			nodeMap = {}
 			kappa = {}
+			isUpdated = {}
 			self.tic.initAllItems(self.tic.numItems)
 			seeds = [self.epsilonGreedy(epsilon, self.tic.items[i]) for i in range(self.tic.numItems)]
 			for j in range(EMiter):
@@ -288,8 +289,8 @@ class MAB(object):
 							if node2 == self.tic.graph.node[node1]['influencedBy'][i]:
 								mask = self.tic.graph.edges[node2, node1]['estimates'] == 0.
 								cascadeLogProbPositive += np.log(self.tic.graph.edges[node2, node1]['estimates'] + mask*1.)
-								self.tic.graph.edges[node2, node1]['totalActivations'][i] += 1
 								kappa[(node2, node1)]['positive'][i] = 1 
+								self.tic.graph.edges[node2, node1]['totalActivations'][i] += 1
 							else:
 								mask = self.tic.graph.edges[node2, node1]['estimates'] == 1.
 								cascadeLogProbNegative += np.log((1. - self.tic.graph.edges[node2, node1]['estimates']) + mask*1.)
@@ -302,7 +303,13 @@ class MAB(object):
 						self.tic.items[i].topicEstimates[mask] = -500
 						norm = logsumexp(self.tic.items[i].topicEstimates)
 					if norm != -np.inf:
-						self.tic.items[i].topicEstimates = np.exp(self.tic.items[i].topicEstimates - norm)
+						try:
+							self.tic.items[i].topicEstimates = np.exp(self.tic.items[i].topicEstimates - norm)
+						except:
+							diff = self.tic.items[i].topicEstimates - norm
+							mask = diff < -500.
+							diff[mask] = -500.
+							self.tic.items[i].topicEstimates = np.exp(diff)
 					else:
 						self.tic.items[i].topicEstimates = np.zeros(self.tic.numTopics)
 					
@@ -311,46 +318,23 @@ class MAB(object):
 				for node1, node2 in self.tic.graph.edges:
 					if (node1, node2) in kappa:
 						if len(kappa[(node1, node2)]['positive'].keys()) > 0:
+							isUpdated[(node1, node2)] = 1
 							numerator = np.sum([self.tic.items[i].topicEstimates for i in kappa[(node1, node2)]['positive'].keys()],0)
 							denominator = np.sum([self.tic.items[i].topicEstimates for i in kappa[(node1, node2)]['negative'].keys()],0) + numerator
 							self.tic.graph.edges[node1, node2]['estimates'] = numerator / denominator
-			print self.tic.graph.edges[node1, node2]['estimates'], self.tic.graph.edges[node1, node2]['probabilities']
-
-			
-
-	def learner(self, iterations, epsilon):
-		pi = np.random.rand(self.tic.numTopics)
-		pi = np.log(pi/sum(pi))
-		nx.set_edge_attributes(self.tic.graph, {e:np.zeros(self.tic.numItems) for e in self.tic.graph.edges}, 'totalActivations')
-		for t in range(iterations):
 			for i in range(self.tic.numItems):
-				seeds = self.epsilonGreedy(epsilon, self.tic.items[i])
-				cascadeLogProbPositive = np.zeros(self.tic.numTopics)
-				cascadeLogProbNegative = np.zeros(self.tic.numTopics)
-				for node1,node2 in self.tic.graph.edges:
-					mask = self.tic.graph.edges[node1, node2]['estimates'] == 0.
-					negmask = self.tic.graph.edges[node1, node2]['estimates'] == 1.
-					if self.tic.graph.edges[node1, node2]['isActive']:
-						cascadeLogProbPositive += np.log(self.tic.graph.edges[node1, node2]['estimates'])
-						self.tic.graph.edges[node1, node2]['totalActivations'][i] += 1
-					else:
-						cascadeLogProbPositive += np.log(1. - self.tic.graph.edges[node1, node2]['estimates'])
-
-				self.tic.items[i].topicEstimates = (pi + cascadeLogProbPositive + cascadeLogProbNegative)
-				norm = logsumexp(self.tic.items[i].topicEstimates)
-
-				if norm != -np.inf:
-					self.tic.items[i].topicEstimates = np.exp(self.tic.items[i].topicEstimates - norm)
-				else:
-					self.tic.items[i].topicEstimates = np.zeros(self.tic.numTopics)
-			pi = np.sum([self.tic.items[i].topicEstimates for i in range(self.tic.numItems)],0)
-			normalizer = pi[:]
+				self.tic.items[i].topicAverage += (1./(t+1))*(self.tic.items[i].topicEstimates - self.tic.items[i].topicAverage)
+				# self.tic.items[i].topicEstimates = self.tic.items[i].topicAverage
+			pi = np.sum([self.tic.items[i].topicAverage for i in range(self.tic.numItems)],0)
 			pi = pi/self.tic.numItems
-			mask = pi == 0.
-			normalizer[mask] += 1
 			for node1, node2 in self.tic.graph.edges:
-				if self.tic.graph.edges[node1, node2]['isActive']:	
-					self.tic.graph.edges[node1, node2]['estimates'] = np.sum([(self.tic.items[i].topicEstimates * self.tic.graph.edges[node1, node2]['totalActivations'][i])/(t+1) for i in range(self.tic.numItems)],0)/normalizer
+				if (node1, node2) in isUpdated:
+					self.tic.graph.edges[node1, node2]['average'] += (1./numUpdates[(node1, node2)])*(self.tic.graph.edges[node1, node2]['estimates'] - self.tic.graph.edges[node1, node2]['average']) 
+					#self.tic.graph.edges[node1, node2]['average'] += (1./numUpdates[(node1, node2)])*(self.tic.graph.edges[node1, node2]['estimates'] - self.tic.graph.edges[node1, node2]['average']) 
+					self.tic.graph.edges[node1, node2]['estimates'] = np.copy(self.tic.graph.edges[node1, node2]['average'])
+					numUpdates[(node1, node2)] += 1
+			print self.tic.items[0].topicEstimates, self.tic.items[0].topicDistribution
+
 			
 		
 itemList = []
@@ -362,4 +346,4 @@ for i in range(numItems):
 	itemList.append(Item(i, itemDist/sum(itemDist)))
 tic = TIC(generateGraph(100, numTopics, density=0.01), numTopics, itemList)
 mab = MAB(tic, budget)
-print mab.learner1(100, 1)
+print mab.learner(100000, 1)

@@ -28,6 +28,7 @@ class Item(object):
 		self.topicDistribution = topicDistribution
 		self.topicEstimates = np.random.rand(len(self.topicDistribution))
 		self.topicEstimates = self.topicEstimates/sum(self.topicEstimates)
+		self.topicAverage = np.zeros(len(self.topicDistribution))
 
 class CascadeLog(object):
 	def __init__(self, node1, node2, edge, time):
