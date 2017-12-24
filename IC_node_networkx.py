@@ -327,7 +327,7 @@ class MAB(object):
 						numerator = positive_sum[edge]
 						if isPostiveParent[edge]:
 							numerator +=  self.tic.graph.edges[edge]['estimates']/P_w[edge[1]]
-							positive_sum[edge] += self.tic.graph.edges[edge]['estimates']/P_w[edge[1]]
+						positive_sum[edge] = numerator
 					self.tic.graph.edges[edge]['estimates'] =  numerator/denominator
 					key = edge
 			print key, self.tic.graph.edges[key]['estimates'], self.tic.graph.edges[key]['probabilities'] 
@@ -340,6 +340,6 @@ budget = 5
 # for i in range(numItems):
 # 	itemDist = np.random.rand(numTopics)
 # 	itemList.append(Item(i, itemDist/sum(itemDist)))
-tic = IC(generateGraph(1000, density=0.01))
+tic = IC(generateGraph(100, density=0.1))
 mab = MAB(tic, budget)
-print mab.learnerNode(100000, 1)
+print mab.learner(100000, 1)
