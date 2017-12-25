@@ -7,8 +7,7 @@ csv_path = "digg_friends.csv"
 csv_path = "digg_friends_pruned.csv"
 csv_path = "digg_simar.csv"
 
-
-G = nx.DiGraph()
+def load_graph(csv_path):
     G = nx.DiGraph()
     with open(csv_path, "rb") as f_obj:
         reader = csv.reader(f_obj)
@@ -19,9 +18,8 @@ G = nx.DiGraph()
                 continue
             mutual = int(row[0].strip())
             timestamp = row[1]
-            user_id = row[2]
-            friend_id = row[3]
-
+            user_id = int(row[2])
+            friend_id = int(row[3])
             prob1 = random.random()
             prob2 = random.random()
             if mutual==0:
@@ -34,6 +32,8 @@ G = nx.DiGraph()
                 print user_id
                 print friend_id
                 print 'mutual value range out of bound'
+    return G
+
         
 
 nx.draw(G, with_labels=True, font_weight='bold')
