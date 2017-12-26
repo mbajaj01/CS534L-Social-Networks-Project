@@ -654,6 +654,6 @@ budget = 5
 for i in range(numItems):
 	itemDist = np.random.rand(numTopics)
 	itemList.append(Item(i, itemDist/sum(itemDist)))
-tic = TIC(generateGraph(10000, numTopics, density=0.0001), numTopics, itemList)
+tic = TIC(generateGraph(15000, numTopics, density=0.14), numTopics, itemList)
 mab = MAB(tic, budget)
-print mab.EM(100000,1)
+print mab.learnerNode(100000,1)
