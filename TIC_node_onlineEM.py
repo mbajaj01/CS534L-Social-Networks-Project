@@ -46,6 +46,7 @@ class TIC(object):
 	def diffusion(self, seeds, item, isEnvironment):
 		nx.set_node_attributes(self.graph, {n: False for n in self.graph.nodes}, 'isInfluenced')
 		nx.set_node_attributes(self.graph, {n: None for n in self.graph.nodes}, 'influenceTimestep')
+		nx.set_node_attributes(self.graph, {n: {} for n in self.graph.nodes}, 'influencedNeighbours')
 		possibleWorld = self.generatePossibleWorld()
 		activeNodes = Queue.Queue()
 		for seed in seeds:
@@ -57,6 +58,8 @@ class TIC(object):
 			currentNode, timestep = activeNodes.get()
 			for node in self.graph.successors(currentNode):
 				if not self.graph.node[node]['isInfluenced']:
+					self.nodeset[item.id][node] = 1
+					self.graph.node[node]['influencedNeighbours'][currentNode] = timestep
 					if isEnvironment:
 						dot = np.dot(self.graph.edges[currentNode, node]['probabilities'], item.topicDistribution)
 					else:
@@ -64,35 +67,14 @@ class TIC(object):
 					if dot > possibleWorld[currentNode][node]:
 						activeNodes.put([node, timestep+1])
 						self.graph.node[node]['isInfluenced'] = True
-						self.graph.node[node]['influenceTimestep'] = timestep + 1
-						if node not in self.Fplus[item.id]:
-							self.Fplus[item.id][node] = {}
-							self.nodeset[item.id][node] = 1
-						self.Fplus[item.id][node][currentNode] = 1
-						
-						if (currentNode, node) not in self.Splus:
-							self.Splus[(currentNode, node)] = {}
-						self.Splus[(currentNode, node)][item.id] = 1
-					else:
-						if node not in self.Fminus[item.id]:
-							self.Fminus[item.id][node] = {}
-							self.nodeset[item.id][node] = 1
-						self.Fminus[item.id][node][currentNode] = 1
-						if (currentNode, node) not in self.Sminus:
-							self.Sminus[(currentNode, node)] = {}
-						self.Sminus[(currentNode, node)][item.id] = 1
+						self.graph.node[node]['influenceTimestep'] = timestep + 1						
 				else:
+					# self.nodeset[item.id][node] = 1
 					if timestep < self.graph.node[node]['influenceTimestep']:
-						if node not in self.Fminus[item.id]:
-							self.Fminus[item.id][node] = {}
-							self.nodeset[item.id][node] = 1
-						self.Fminus[item.id][node][currentNode] = 1
-						if (currentNode, node) not in self.Sminus:
-							self.Sminus[(currentNode, node)] = {}
-						self.Sminus[(currentNode, node)][item.id] = 1
+						self.graph.node[node]['influencedNeighbours'][currentNode] = timestep
 
 		influencedNodes = [n for n in self.graph.nodes if self.graph.node[n]['isInfluenced']]
-		# print len(influencedNodes)
+		#print len(influencedNodes)
 		return len(influencedNodes)
 
 	def diffusionCelf(self, seeds, u, cur_best, item, isEnvironment):
@@ -251,7 +233,6 @@ class TIC(object):
 			heapq.heappush(q, (-u['mg1'], u))
 		return seeds
 
-
 class MAB(object):
 	def __init__(self, tic, budget):
 		self.budget = budget
@@ -279,105 +260,144 @@ class MAB(object):
 			l2 += (self.tic.graph.edges[edge]['estimates'] - self.tic.graph.edges[edge]['probabilities'])**2
 		return np.sum(l2)
 
-	def learner(self, iterations, epsilon):
+	def L2DotError(self):
+		l2 = 0.
+		for edge in self.tic.graph.edges:
+			for item in range(self.tic.numItems):
+				l2 += (np.dot(self.tic.graph.edges[edge]['estimates'], self.tic.items[item].topicEstimates) - np.dot(self.tic.graph.edges[edge]['probabilities'], self.tic.items[item].topicDistribution))**2
+		return np.sum(l2)
+
+	def learner(self, iterations, epsilon, initialIter = -1):
 		pi = np.random.rand(self.tic.numTopics)
 		pi = np.log(pi/sum(pi))
-		nodeset = {}
-		R = {}
 		negative_sum = {}
 		positive_sum = {}
-		pi_average = np.zeros(self.tic.numTopics)
+		topic_average = {}
 		for iteration in range(iterations):
 			self.tic.initAllItems(self.tic.numItems)
-			seeds = [self.epsilonGreedy(epsilon, self.tic.items[i]) for i in range(self.tic.numItems)]
 			itemSum = np.zeros(self.tic.numTopics)
+			R = {}
+			kappa = {}
 			for item in range(self.tic.numItems):
+				R[item] = {}
+				seeds = self.epsilonGreedy(epsilon, self.tic.items[item])
 				cascadeLogProbPositive = np.zeros(self.tic.numTopics)
 				cascadeLogProbNegative = np.zeros(self.tic.numTopics)
-				for node in self.tic.nodeset[item]:
-					influenced = 0
-					if node in self.tic.Fplus[item]:
-						influenced = 1
-						for positivenode in self.tic.Fplus[item][node].keys():
-							positive = np.copy(self.tic.graph.edges[positivenode, node]['estimates'])
-							try:
-								cascadeLogProbPositive += np.log(positive)
-							except:
-								positive[positive <= 0.] = 1.
-								cascadeLogProbPositive += np.log(positive)								
-
-					if node in self.tic.Fminus[item]:
-						for negativeNode in self.tic.Fminus[item][node].keys():
-							negative = np.copy(1. - self.tic.graph.edges[negativeNode, node]['estimates'])
+				totalnodes = 0
+				for node in self.tic.nodeset[item].keys():
+					cascadeProbPositive = np.ones(self.tic.numTopics)
+					for parent in self.tic.graph.node[node]['influencedNeighbours'].keys():					
+						kappa[(parent, node)] = 1
+						if self.tic.graph.node[node]['influenceTimestep'] == self.tic.graph.node[node]['influencedNeighbours'][parent] + 1:
+							if node not in self.tic.Fplus[item]:
+								self.tic.Fplus[item][node] = {}
+							self.tic.Fplus[item][node][parent] = 1
+							if (parent, node) not in self.tic.Splus:
+								self.tic.Splus[(parent, node)] = {}
+							self.tic.Splus[(parent, node)][item] = 1
+							cascadeProbPositive *= 1. - self.tic.graph.edges[parent, node]['estimates']
+						else:
+							if node not in self.tic.Fminus[item]:
+								self.tic.Fminus[item][node] = {}
+							self.tic.Fminus[item][node][parent] = 1
+							if (parent, node) not in self.tic.Sminus:
+								self.tic.Sminus[(parent, node)] = {}
+							self.tic.Sminus[(parent, node)][item] = 1
+							negative = 1. - self.tic.graph.edges[parent, node]['estimates']
 							try:
 								cascadeLogProbNegative += np.log(negative)
 							except:
 								negative[negative <= 0.] = 1.
-								cascadeLogProbNegative += np.log(negative)
-						
-				self.tic.items[item].topicEstimates =  pi + cascadeLogProbPositive + cascadeLogProbNegative
-				try:
-					norm = logsumexp(self.tic.items[item].topicEstimates)
-				except:
+								cascadeLogProbNegative += np.log(negative)	
+
+					if self.tic.graph.node[node]['influenceTimestep'] > 0:
+						if self.tic.graph.node[node]['isInfluenced']:
+							cascadeProbPositive = 1. - cascadeProbPositive
+							try:
+								cascadeLogProbPositive += np.log(cascadeProbPositive)
+							except:
+								cascadeProbPositive[cascadeProbPositive <= 0.] = 1.
+								cascadeLogProbPositive += np.log(cascadeProbPositive)
+
+							for positivenode in self.tic.Fplus[item][node].keys():
+								R[item][(positivenode, node)] = self.tic.graph.edges[positivenode, node]['estimates']/(cascadeProbPositive)
+								R[item][(positivenode, node)][R[item][(positivenode, node)] > 1.] = 1.
+								if sum(R[item][(positivenode, node)] < 0.) > 0:
+									print "Error", R[item][(positivenode, node)]
+				if iteration > initialIter:
+					self.tic.items[item].topicEstimates =  pi + cascadeLogProbPositive + cascadeLogProbNegative
 					self.tic.items[item].topicEstimates[self.tic.items[item].topicEstimates < -500] = -500
 					norm = logsumexp(self.tic.items[item].topicEstimates)
-				self.tic.items[item].topicEstimates = np.exp(self.tic.items[item].topicEstimates - norm)
-				itemSum += np.copy(self.tic.items[item].topicEstimates)
-			pi_average += np.copy(itemSum)
+					self.tic.items[item].topicEstimates = np.exp(self.tic.items[item].topicEstimates - norm)
+				
+				if item not in topic_average:
+					topic_average[item] = np.zeros(self.tic.numTopics)				
+				topic_average[item] = topic_average[item] + ((self.tic.items[item].topicEstimates - topic_average[item])/(iteration + 1))
+				if iteration > initialIter:
+					self.tic.items[item].topicEstimates = np.copy(topic_average[item])
+				itemSum += np.copy(topic_average[item])
+			#pi_average += np.copy(itemSum)
 			# pi = np.log(pi_average/(self.tic.numItems*(iteration+1)))
-			pi = np.log(itemSum/(self.tic.numItems))
-			for node1, node2 in self.tic.Splus.keys():
+			if iteration > initialIter:
+				pi = np.log(itemSum/(self.tic.numItems))
+
+			for node1, node2 in kappa.keys():
 				numerator = np.zeros(self.tic.numTopics)
 				denominator = np.zeros(self.tic.numTopics)
 				update = 0
-				for item in self.tic.Splus[(node1, node2)].keys():
-					if item in self.tic.Fplus:
-						if (node1, node2) not in positive_sum:
-							positive_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
-						if (node1, node2) not in negative_sum:
-							negative_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
-						denominator = np.copy(negative_sum[(node1, node2)])
-						numerator = np.copy(positive_sum[(node1, node2)])
+				if (node1, node2) not in positive_sum:
+					positive_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
+				if (node1, node2) not in negative_sum:
+					negative_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
+				denominator = np.copy(negative_sum[(node1, node2)])
+				numerator = np.copy(positive_sum[(node1, node2)])
+				if (node1, node2) in self.tic.Splus:
+					for item in self.tic.Splus[(node1, node2)].keys():
 						try:
-							numerator += self.tic.items[item].topicEstimates
+							numerator += self.tic.items[item].topicEstimates * R[item][(node1, node2)]
 							denominator += self.tic.items[item].topicEstimates
 							if numerator > denominator:
 								print "Error New"
 								print numerator, denominator,  R[item][(node1, node2)]
 								sys.exit()
-						except:						
-							dist = np.copy(self.tic.items[item].topicEstimates)
-							dist[dist < 10**-50] = 10**-50.
-							numerator += dist
-							denominator += dist
-						update = 1
-
-				if update == 1:
-					
-					if (node1, node2) in self.tic.Sminus:
-						for item in self.tic.Sminus[(node1, node2)].keys():
-							if item in self.tic.Fminus:
+						except:
+							R[item][(node1, node2)][R[item][(node1, node2)] < 10**-50] = 10**-50.
+							try:
+								numerator += self.tic.items[item].topicEstimates * R[item][(node1, node2)]
 								denominator += self.tic.items[item].topicEstimates
-								key = (node1, node2)
+							except:
+								dist = np.copy(self.tic.items[item].topicEstimates)
+								dist[dist < 10**-50] = 10**-50.
+								numerator += dist * R[item][(node1, node2)]
+								denominator += dist
+						update = 1
+					positive_sum[(node1, node2)] = np.copy(numerator)
 
-					try:
-						self.tic.graph.edges[node1, node2]['estimates'] = numerator/denominator
-					except:
-						numerator[numerator < 10**-50] = 10**-50.
+			
+					#key = (node1, node2)
+				if (node1, node2) in self.tic.Sminus:
+					for item in self.tic.Sminus[(node1, node2)].keys():
+						denominator += self.tic.items[item].topicEstimates
+						key = (node1, node2)
+				negative_sum[(node1, node2)] = np.copy(denominator)
+				if iteration > initialIter:
+					if update == 1:
 						try:
 							self.tic.graph.edges[node1, node2]['estimates'] = numerator/denominator
 						except:
-							denominator[denominator < 10**-50] = 10**-50.
-							self.tic.graph.edges[node1, node2]['estimates'] = numerator/denominator	
-					positive_sum[(node1, node2)] = np.copy(numerator)
-					negative_sum[(node1, node2)] = np.copy(denominator)
-					#probMask = (self.tic.graph.edges[node1, node2]['estimates'] > 1.)
-					#self.tic.graph.edges[node1, node2]['estimates'][probMask] = 1.
-					if sum(self.tic.graph.edges[node1, node2]['estimates']> 1.) > 0:
-						print "Error: ", numerator, denominator, self.tic.graph.edges[node1, node2]['estimates']
-						sys.exit()
+							numerator[numerator < 10**-50] = 10**-50.
+							try:
+								self.tic.graph.edges[node1, node2]['estimates'] = numerator/denominator
+							except:
+								denominator[denominator < 10**-50] = 10**-50.
+								self.tic.graph.edges[node1, node2]['estimates'] = numerator/denominator	
+						#probMask = (self.tic.graph.edges[node1, node2]['estimates'] > 1.)
+						#self.tic.graph.edges[node1, node2]['estimates'][probMask] = 1.
+						if sum(self.tic.graph.edges[node1, node2]['estimates']> 1.) > 0:
+							print "Error: ", numerator, denominator, self.tic.graph.edges[node1, node2]['estimates']
+							sys.exit()
 
-			print self.tic.graph.edges[key]['probabilities'], self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates, self.tic.items[0].topicDistribution, np.dot(self.tic.graph.edges[key]['probabilities'], self.tic.items[0].topicDistribution), np.dot(self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates)
+			print self.L2Error(), self.L2DotError(), self.tic.graph.number_of_edges(), self.tic.graph.edges[key]['probabilities'], self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates, self.tic.items[0].topicDistribution, np.dot(self.tic.graph.edges[key]['probabilities'], self.tic.items[0].topicDistribution), np.dot(self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates)
 
 itemList = []
 numItems = 10

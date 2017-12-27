@@ -257,6 +257,13 @@ class MAB(object):
 		spread = self.tic.diffusion(seeds=seeds, isEnvironment=True)
 		return seeds
 
+	def L2Error(self):
+		l2 = 0.
+		for edge in self.tic.graph.edges:
+			l2 += (self.tic.graph.edges[edge]['estimates'] - self.tic.graph.edges[edge]['probabilities'])**2
+		return l2
+
+
 	def logLikelihood(self, pi):
 		likelihood = 0.
 		for i in range(self.tic.numItems):				
@@ -274,12 +281,6 @@ class MAB(object):
 			likelihood += np.sum(self.tic.items[i].topicEstimates*(pi + cascadeLogProbPositive + cascadeLogProbNegative))
 		return likelihood
 
-	def L2Error(self):
-		l2 = 0.
-		for edge in self.tic.graph.edges:
-			l2 += (self.tic.graph.edges[edge]['estimates'] - self.tic.graph.edges[edge]['probabilities'])**2
-		return l2
-
 	def learner(self, iterations, epsilon):
 		edgeActivations = {e:0. for e in self.tic.graph.edges}
 		nodeActivations = {n:0 for n in self.tic.graph.nodes}
@@ -296,9 +297,9 @@ class MAB(object):
 			for e in self.tic.graph.edges:
 				if nodeActivations[e[1]] > 0:
 					self.tic.graph.edges[e]['estimates'] = edgeActivations[e]/nodeActivations[e[1]]
-			print self.L2Error(), self.tic.graph.edges[key]['estimates'], self.tic.graph.edges[key]['probabilities'], self.tic.graph.number_of_edges()
+			print self.tic.graph.edges[key]['probabilities'], self.tic.graph.edges[key]['estimates']
 
-	def learnerNode(self, iterations, epsilon, initialIter = 20):
+	def learnerNode(self, iterations, epsilon, gamma=0.1, initialEpochs = 10):
 		S_w = {}
 		positive_sum = {}
 		for t in range(iterations):
@@ -333,9 +334,13 @@ class MAB(object):
 						numerator = positive_sum[edge]
 						if isPostiveParent[edge]:
 							numerator +=  self.tic.graph.edges[edge]['estimates']/P_w[edge[1]]
+							if t > initialEpochs:
+								if denominator > 1:
+									self.tic.graph.edges[edge]['estimates'] = self.tic.graph.edges[edge]['estimates'] + ((self.tic.graph.edges[edge]['estimates']/P_w[edge[1]]) - self.tic.graph.edges[edge]['estimates'])/(denominator)
+								else:
+									self.tic.graph.edges[edge]['estimates'] = ((self.tic.graph.edges[edge]['estimates']/P_w[edge[1]]) - self.tic.graph.edges[edge]['estimates'])/(denominator)
 						positive_sum[edge] = numerator
-						if t > initialIter:
-							self.tic.graph.edges[edge]['estimates'] =  numerator/denominator
+						
 						key = edge
 			print self.L2Error(), self.tic.graph.edges[key]['estimates'], self.tic.graph.edges[key]['probabilities'], self.tic.graph.number_of_edges()
 

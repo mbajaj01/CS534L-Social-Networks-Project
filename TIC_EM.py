@@ -205,8 +205,8 @@ class TIC(object):
 					norm = logsumexp(self.items[item].topicDistribution)
 				self.items[item].topicDistribution = np.exp(self.items[item].topicDistribution - norm)
 				itemSum += np.copy(self.items[item].topicDistribution)
-			
-			print "Likelihood:", np.sum(logLikelihood)
+			if iteration > 0:
+				print "Likelihood:", np.sum(logLikelihood)
 			pi = np.log(itemSum/self.numItems)
 			for node1, node2 in Splus.keys():
 				numerator = np.zeros(self.numTopics)
@@ -249,11 +249,11 @@ class TIC(object):
 							denominator[denominator < 10**-50] = 10**-50.
 							self.graph.edges[node1, node2]['probabilities'] = numerator/denominator	
 
-				probMask = (self.graph.edges[node1, node2]['probabilities'] > 1.)
-				self.graph.edges[node1, node2]['probabilities'][probMask] = 1.
-				if sum(self.graph.edges[node1, node2]['probabilities'] < 0.) > 0:
-					print "Error: ", numerator, denominator, self.graph.edges[node1, node2]['probabilities']
-					sys.exit()
+					probMask = (self.graph.edges[node1, node2]['probabilities'] > 1.)
+					self.graph.edges[node1, node2]['probabilities'][probMask] = 1.
+					if sum(self.graph.edges[node1, node2]['probabilities'] < 0.) > 0:
+						print "Error: ", numerator, denominator, self.graph.edges[node1, node2]['probabilities']
+						sys.exit()
 
 
 numTopics = 3

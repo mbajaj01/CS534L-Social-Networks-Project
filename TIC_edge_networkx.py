@@ -69,6 +69,7 @@ class TIC(object):
 			activeNodes.put([seed, 0])
 			self.graph.node[seed]['isInfluenced'][item.id] = True
 			self.graph.node[seed]['influencedBy'][item.id] = -1
+			self.graph.node[seed]['influenceTimestep'][item.id] = 0
 		while not activeNodes.empty():
 			currentNode, timestep = activeNodes.get()
 			for node in self.graph.successors(currentNode):
@@ -338,7 +339,7 @@ class MAB(object):
 		return likelihood
 
 	def logLikelihoodNode(self, pi, R):
-		likelihood = 0.
+		logLikelihood = np.zeros(shape=(self.tic.numItems, self.tic.numTopics))
 		for i in range(self.tic.numItems):
 			cascadeLogProbPositive = np.zeros(self.tic.numTopics)
 			cascadeLogProbNegative = np.zeros(self.tic.numTopics)
@@ -348,25 +349,35 @@ class MAB(object):
 				if len(self.tic.graph.node[node]['influencedNeighbours'][i].keys()) > 0:
 					for parent in self.tic.graph.node[node]['influencedNeighbours'][i].keys():
 						if self.tic.graph.node[node]['influenceTimestep'][i] == self.tic.graph.node[node]['influencedNeighbours'][i][parent] + 1:
-							likelihood += R[(parent, node)][i]*np.log(self.tic.graph.edges[parent, node]['estimates'])
 							try:
-								likelihood += (1-R[(parent, node)][i])*np.log(1-self.tic.graph.edges[parent, node]['estimates'])
+								logLikelihood[i,:] += (R[(parent, node)][i]*np.log(self.tic.graph.edges[parent, node]['estimates'])) + ((1 - R[(parent, node)][i])*(np.log(1. - self.tic.graph.edges[parent, node]['estimates'])))
 							except:
-								negative = np.copy(1-self.tic.graph.edges[parent, node]['estimates'])
-								negativeMask = negative <= 0.
-								negative[negativeMask] = 1.
-								likelihood += (1-R[(parent, node)][i])*np.log(negative)
+								edgeProb = np.copy(self.tic.graph.edges[parent, node]['estimates'])
+								edgeProb[edgeProb < 10**-50] = 10**-50
+								try:
+									logLikelihood[i,:] += (R[(parent, node)][i]*np.log(edgeProb)) + ((1 - R[(parent, node)][i])*(np.log(1. - edgeProb)))
+								except:
+									negProb = np.copy(edgeProb)
+									posProb = np.copy(1.- edgeProb)
+									posProb[posProb <= 0] = 1.
+									negProb[negProb <= 0] = 1.
+									logLikelihood[i,:] += (R[(parent, node)][i]*np.log(posProb)) + ((1 - R[(parent, node)][i])*(np.log(negProb)))
 						else:
+							negative = 1. - self.tic.graph.edges[parent, node]['estimates']
 							try:
-								likelihood += np.log(1-self.tic.graph.edges[parent, node]['estimates'])
+								logLikelihood[i, :] += np.log(negative)
 							except:
-								negative = np.copy(1-self.tic.graph.edges[parent, node]['estimates'])
-								negativeMask = negative <= 0.
-								negative[negativeMask] = 1.
-								likelihood += np.log(negative)
-			likelihood += pi
-			likelihood *= self.tic.items[i].topicEstimates 
-		return sum(likelihood)
+								negative[negative <= 0.] = 1.
+								logLikelihood[i, :] += np.log(negative)
+			logLikelihood[i, :] += pi
+			logLikelihood[i, :] *= self.tic.items[i].topicEstimates 
+		return np.sum(logLikelihood)
+
+	def L2Error(self):
+		l2 = 0.
+		for edge in self.tic.graph.edges:
+			l2 += (self.tic.graph.edges[edge]['estimates'] - self.tic.graph.edges[edge]['probabilities'])**2
+		return np.sum(l2)
 
 	def learnerNode(self, iterations, epsilon):
 		pi = np.random.rand(self.tic.numTopics)
@@ -396,17 +407,22 @@ class MAB(object):
 							if (parent, node) not in kappa:
 								kappa[(parent, node)] = {'positive':{}, 'negative': {}}
 								R[(parent, node)] = {}
-							if (parent, node) not in S_w:
-								S_w[(parent, node)] = {'positive':np.zeros(self.tic.numItems), 'negative':np.zeros(self.tic.numItems)}
+							# if (parent, node) not in S_w:
+							# 	S_w[(parent, node)] = {'positive':np.zeros(self.tic.numItems), 'negative':np.zeros(self.tic.numItems)}
 				
 							if self.tic.graph.node[node]['influenceTimestep'][i] == self.tic.graph.node[node]['influencedNeighbours'][i][parent] + 1:
 								cascadeProbPositive *= 1. - self.tic.graph.edges[parent, node]['estimates']
 								kappa[(parent, node)]['positive'][i] = 1 
-								S_w[(parent, node)]['positive'][i] += 1
+								# S_w[(parent, node)]['positive'][i] += 1
 							else:
-								cascadeProbNegative *= 1. - self.tic.graph.edges[parent, node]['estimates']
+								negative = 1. - self.tic.graph.edges[parent, node]['estimates']
+								try:
+									cascadeLogProbNegative += np.log(negative)
+								except:
+									negative[negative <= 0.] = 1.
+									cascadeLogProbNegative += np.log(negative)
 								kappa[(parent, node)]['negative'][i] = 1
-								S_w[(parent, node)]['negative'][i] += 1
+								# S_w[(parent, node)]['negative'][i] += 1
 						if self.tic.graph.node[node]['isInfluenced'][i]:
 							cascadeProbPositive = 1. - cascadeProbPositive
 							positiveMask = cascadeProbPositive <= 0.
@@ -414,56 +430,52 @@ class MAB(object):
 							for parent in self.tic.graph.node[node]['influencedNeighbours'][i].keys():
 								if self.tic.graph.node[node]['influenceTimestep'][i] == self.tic.graph.node[node]['influencedNeighbours'][i][parent] + 1:
 									R[(parent, node)][i] = self.tic.graph.edges[parent, node]['estimates']/(cascadeProbPositive)
-						cascadeLogProbPositive += np.log(cascadeProbPositive)
-						negativeMask = cascadeProbNegative <= 0.
-						cascadeProbNegative[negativeMask] = 1.
-						cascadeLogProbNegative += np.log(cascadeProbNegative)
+							cascadeLogProbPositive += np.log(cascadeProbPositive)
 				self.tic.items[i].topicEstimates = np.copy((pi + cascadeLogProbPositive + cascadeLogProbNegative))
-				normMask = self.tic.items[i].topicEstimates < -100.
-				self.tic.items[i].topicEstimates[normMask] = -100.
-				#print self.tic.items[i].topicEstimates
+				self.tic.items[i].topicEstimates[self.tic.items[i].topicEstimates < -100] = -100
 				norm = logsumexp(self.tic.items[i].topicEstimates)
 				#topic_sum[i] +=  np.exp(self.tic.items[i].topicEstimates - norm)
 				self.tic.items[i].topicEstimates =  np.exp(self.tic.items[i].topicEstimates - norm)
-			pi = np.sum([np.copy(self.tic.items[i].topicEstimates) for i in range(self.tic.numItems)],0)
-			pi = np.log(pi/self.tic.numItems)
-			for node1, node2 in self.tic.graph.edges:
-				if (node1, node2) in kappa:
-					key = (node1, node2)
-					if (node1, node2) not in positive_sum:
-						positive_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
-					if (node1, node2) not in negative_sum:
-						negative_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
-					denominator = np.copy(negative_sum[(node1, node2)])
-					denominator += np.sum([self.tic.items[i].topicEstimates for i in kappa[(node1, node2)]['negative'].keys() + kappa[(node1, node2)]['positive'].keys()],0)
-					negative_sum[(node1, node2)] = np.copy(denominator)
-					if len(kappa[(node1, node2)]['positive'].keys()) > 0:	
-						numerator = np.copy(positive_sum[(node1, node2)])
-						for i in kappa[(node1, node2)]['positive'].keys():
+			piNew = np.sum([np.copy(self.tic.items[i].topicEstimates) for i in range(self.tic.numItems)],0)
+			piNew = np.log(piNew/self.tic.numItems)
+			pi = pi + (piNew - pi)/(t+1)
+			for node1, node2 in kappa.keys():
+				key = (node1, node2)
+				if (node1, node2) not in positive_sum:
+					positive_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
+				if (node1, node2) not in negative_sum:
+					negative_sum[(node1, node2)] = np.zeros(self.tic.numTopics)
+				denominator = np.copy(negative_sum[(node1, node2)])
+				denominator += np.sum([self.tic.items[i].topicEstimates for i in kappa[(node1, node2)]['negative'].keys() + kappa[(node1, node2)]['positive'].keys()],0)
+				negative_sum[(node1, node2)] = np.copy(denominator)
+				if len(kappa[(node1, node2)]['positive'].keys()) > 0:	
+					numerator = np.copy(positive_sum[(node1, node2)])
+					for i in kappa[(node1, node2)]['positive'].keys():
+						try:
+							numerator += self.tic.items[i].topicEstimates*R[(node1, node2)][i]
+						except:
+							Rmask = R[(node1, node2)][i] < 10**-50.
+							R[(node1, node2)][i][Rmask] = 10**-50.
 							try:
 								numerator += self.tic.items[i].topicEstimates*R[(node1, node2)][i]
 							except:
-								Rmask = R[(node1, node2)][i] < -100.
-								R[(node1, node2)][i][Rmask] = -100.
-								try:
-									numerator += self.tic.items[i].topicEstimates*R[(node1, node2)][i]
-								except:
-									topicMask  = self.tic.items[i].topicEstimates < -100.
-									self.tic.items[i].topicEstimates[topicMask] = -100.
-									numerator += self.tic.items[i].topicEstimates*R[(node1, node2)][i]
-						positive_sum[(node1, node2)] = np.copy(numerator)
-								# self.tic.items[i].topicEstimates = -100.
-								# numerator += self.tic.items[i].topicEstimates*R[(node1, node2)][i]
-						denominatorMask = denominator == 0.
-						denominator[denominatorMask] = 1.
-						
-						self.tic.graph.edges[node1, node2]['estimates'] = numerator/denominator
-						# self.tic.graph.edges[node1, node2]['average'] += (1./numUpdates[(node1, node2)])*(self.tic.graph.edges[node1, node2]['estimates'] - self.tic.graph.edges[node1, node2]['average']) 
-						# self.tic.graph.edges[node1, node2]['estimates'] = np.copy(self.tic.graph.edges[node1, node2]['average'])
-						# numUpdates[(node1, node2)] += 1
-						#print self.tic.graph.edges[node1, node2]['estimates']
-						#print numerator, denominator, kappa[(node1, node2)]
-			print self.tic.graph.edges[key]['estimates'], self.tic.graph.edges[key]['probabilities']
+								dist = np.copy(self.tic.items[i].topicEstimates)
+								topicMask  = dist < 10**-50.
+								dist[topicMask] = 10**-50.
+								numerator += dist*R[(node1, node2)][i]
+					positive_sum[(node1, node2)] = np.copy(numerator)
+							# self.tic.items[i].topicEstimates = -100.
+							# numerator += self.tic.items[i].topicEstimates*R[(node1, node2)][i]
+					denominatorMask = denominator == 0.
+					denominator[denominatorMask] = 1.
+					
+					self.tic.graph.edges[node1, node2]['estimates'] = numerator/denominator
+					# self.tic.graph.edges[node1, node2]['average'] += (1./numUpdates[(node1, node2)])*(self.tic.graph.edges[node1, node2]['estimates'] - self.tic.graph.edges[node1, node2]['average']) 
+					# self.tic.graph.edges[node1, node2]['estimates'] = np.copy(self.tic.graph.edges[node1, node2]['average'])
+					# numUpdates[(node1, node2)] += 1
+					#print self.tic.graph.edges[node1, node2]['estimates']
+					#print numerator, denominator, kappa[(node1, node2)]
+			print self.L2Error(), self.tic.graph.edges[key]['probabilities'], self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates, self.tic.items[0].topicDistribution, np.dot(self.tic.graph.edges[key]['probabilities'], self.tic.items[0].topicDistribution), np.dot(self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates)
 			#print self.tic.items[0].topicEstimates, self.tic.items[0].topicDistribution, np.sum(self.tic.items[0].topicEstimates)
 
 	def EM(self, iterations, epsilon):
@@ -619,9 +631,9 @@ class MAB(object):
 				pi = np.log(pi/self.tic.numItems)
 				for node1, node2 in self.tic.graph.edges:
 					if (node1, node2) in kappa:
+						key = (node1, node2)
 						if len(kappa[(node1, node2)]['positive'].keys()) > 0:
-							if len(kappa[(node1, node2)]['negative'].keys()) > 0:
-								key = (node1, node2)
+														
 							isUpdated[(node1, node2)] = 1
 							numerator = np.sum([self.tic.items[i].topicEstimates for i in kappa[(node1, node2)]['positive'].keys()],0)
 							denominator = np.sum([self.tic.items[i].topicEstimates for i in kappa[(node1, node2)]['negative'].keys()],0) + numerator
@@ -629,7 +641,8 @@ class MAB(object):
 							denominator[mask] = 1.
 							self.tic.graph.edges[node1, node2]['estimates'] = numerator / denominator
 							
-			print self.logLikelihood(pi)
+			print self.tic.graph.edges[key]['probabilities'], self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates, self.tic.items[0].topicDistribution, np.dot(self.tic.graph.edges[key]['probabilities'], self.tic.items[0].topicDistribution), np.dot(self.tic.graph.edges[key]['estimates'], self.tic.items[0].topicEstimates)
+			
 			# print self.tic.graph.edges[key]['estimates'], self.tic.graph.edges[key]['probabilities'], kappa[key]
 			#print self.tic.
 			#print self.tic.items[0].topicEstimates, self.tic.items[0].topicDistribution, np.exp(pi)
@@ -654,6 +667,6 @@ budget = 5
 for i in range(numItems):
 	itemDist = np.random.rand(numTopics)
 	itemList.append(Item(i, itemDist/sum(itemDist)))
-tic = TIC(generateGraph(15000, numTopics, density=0.14), numTopics, itemList)
+tic = TIC(generateGraph(1000, numTopics, density=0.002), numTopics, itemList)
 mab = MAB(tic, budget)
 print mab.learnerNode(100000,1)
