@@ -40,10 +40,10 @@ struct EdgeInfo{
 };
 
 
-class xgraph
+class Xgraph
 {
 	public:
-		xgraph(){
+		Xgraph(){
 
 		};
 
@@ -226,7 +226,7 @@ class xgraph
 };
 
 int main(){
-	xgraph xg;
+	Xgraph xg;
 	xg.AddEdge(1,2,0.2);
 	xg.AddEdge(3,4,0.1);
 	xg.AddEdge(30,40,0.1);
