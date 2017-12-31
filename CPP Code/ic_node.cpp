@@ -78,12 +78,76 @@ class IC{
 			return spread;
 		}
 
+		double compareRegret(TimGraph& graph, vector<int> trueSeeds, vector<int> banditSeeds){
+			vector<vector<int>> possibleWorld;
+			mt19937 mt(rd());
+		    uniform_real_distribution<double> dist(0.0, 1.0);
+			for(int i=0; i<graph.n; i++){
+				int parent = i;
+				possibleWorld.push_back(vector<int>());
+				for(int j=0; j<graph.g[i].size(); j++){
+					int node = graph.g[i][j];
+					double randomProb = (double)dist(rd);
+					if (graph.prob[parent][j] > randomProb){
+						possibleWorld[parent].push_back(1);
+					}else{
+						possibleWorld[parent].push_back(0);
+					}
+				}
+			}
+			
+			double spread = 0;
+			deque<pair<int,int>>activeNodes;
+			vector<bool> visited(graph.n, false);
+			for(int i=0;i<(int)trueSeeds.size();i++){
+				activeNodes.push_back(pair<int,int>(trueSeeds[i],0));
+				visited[trueSeeds[i]] = true;
+				spread += 1;
+			}
+			while(!activeNodes.empty()){
+				pair<int,int> currentNode = activeNodes.front();
+				activeNodes.pop_front();
+				for(int j=0; j<(int)graph.g[currentNode.first].size(); j++){
+					int node = graph.g[currentNode.first][j];
+					if(!visited[node]){
+						if(possibleWorld[currentNode.first][j] == 1){
+							activeNodes.push_back(pair<int,int>(node, currentNode.second + 1));
+							spread += 1;
+							visited[node] = true;
+						}
+					}
+				}
+			}
 
+			activeNodes.clear();
+			visited = vector<bool>(graph.n, false);
+			double spreadBandit = 0;
+			for(int i=0;i<(int)banditSeeds.size();i++){
+				activeNodes.push_back(pair<int,int>(banditSeeds[i],0));
+				visited[banditSeeds[i]] = true;
+				spreadBandit += 1;
+			}
+			while(!activeNodes.empty()){
+				pair<int,int> currentNode = activeNodes.front();
+				activeNodes.pop_front();
+				for(int j=0; j<(int)graph.g[currentNode.first].size(); j++){
+					int node = graph.g[currentNode.first][j];
+					if(!visited[node]){
+						if(possibleWorld[currentNode.first][j] == 1){
+							activeNodes.push_back(pair<int,int>(node, currentNode.second + 1));
+							spreadBandit += 1;
+							visited[node] = true;
+						}
+					}
+				}
+			}
+			return (spread - spreadBandit);
+		}
 
 		double expectedSpread(TimGraph& graph, vector<int> seeds, int numberOfSimulations, bool isEnvironment){
 			double expSpread = 0.0;
 			for(int i=0;i<numberOfSimulations;i++){
-				expSpread += diffusion(graph, seeds, isEnvironment);
+				expSpread += (double)diffusion(graph, seeds, isEnvironment);
 			}
 			expSpread /= numberOfSimulations;
 			return expSpread;
@@ -128,12 +192,13 @@ class MAB{
 		    return seeds;
 		}
 
-		vector<int> epsilonGreedy(TimGraph& graph, double epsilon, double randomNumber){
+		vector<int> epsilonGreedy(TimGraph& graph, double epsilon, double randomNumber, vector<int> banditSeeds){
 			vector<int> seeds; 
 			if(epsilon > randomNumber){
 				seeds = explore(graph);
 			}else{
-				seeds = exploit(graph, false);
+				// seeds = exploit(graph, false);
+				seeds = banditSeeds;
 			}
 			int spread = ic.diffusion(graph, seeds, true);
 			return seeds;
@@ -153,15 +218,29 @@ class MAB{
 			mt19937 mt(rd());
 		    uniform_real_distribution<double> dist(0.0, 1.0);
 		    vector<int> banditSeeds;
+		    vector<int> trueSeeds;
 		    map<pair<int,int>, int> S_w_plus;
 		    map<pair<int,int>, int> S_w_minus;
 		    map<pair<int,int>, bool> S_w;
-		 //    vector<int> seeds1 = exploit(graph,true);
-		 //    int spread1 = ic.expectedSpread(graph, seeds1, 10, true);
-			// cout << " " << spread1<<endl;
+		    trueSeeds = exploit(graph,true);
+		    for (int i=0 ;i< trueSeeds.size(); i++){
+		    	cout << trueSeeds[i] << " ";
+		    }
+		    cout << endl;
+		    double spread1 = ic.expectedSpread(graph, trueSeeds, 100, true);
+		    cout << " " << spread1<<endl;
+		    exit(0);
+		    banditSeeds = exploit(graph,false);
+			// 
+			double regret = 0.0;
+			double regretIter = 0.0;
+		    for (int sim=0; sim < 3; sim++){
+				regretIter += ic.compareRegret(graph, trueSeeds, banditSeeds);
+			}
+			regret += regretIter/3;
 			for(int t=0; t<iterations;t++){
 				double randomNumber = (double)dist(mt);
-				banditSeeds = epsilonGreedy(graph, epsilon, randomNumber);
+				banditSeeds = epsilonGreedy(graph, epsilon, randomNumber, banditSeeds);
 				map<int, map<int, int>>::iterator nodeIterator;
 				map<int,double> P_w;
 				map<pair<int,int>, bool> isPositiveParent;
@@ -229,7 +308,13 @@ class MAB{
 						key = edge;
 					}
 				}
-				cout << L2Error(graph) << " "<< graph.probEstimate[key.first][graph.edgeMapping[key.first][key.second]] << " " << graph.prob[key.first][graph.edgeMapping[key.first][key.second]] << endl;
+			    banditSeeds = exploit(graph,false);
+			    regretIter = 0.0;
+			    for (int sim=0; sim < 3; sim++){
+					regretIter += ic.compareRegret(graph, trueSeeds, banditSeeds);
+				}
+				regret += regretIter/3;
+				cout << L2Error(graph) << " "<<regret/(t+2)<< endl;
 				
 			}
 
@@ -248,7 +333,7 @@ int main(int argn, char ** argv)
 	// seeds.push_back(1);
 	// seeds.push_back(2);
 	// tic.expectedSpread(graph, seeds, 100, true);
-	MAB mab(50);
-	mab.learner(graph, 1, 20000);
+	MAB mab(30);
+	mab.learner(graph, 0, 20000);
 
 }
