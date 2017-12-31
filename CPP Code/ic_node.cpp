@@ -287,6 +287,10 @@ class MAB{
 						double denominator = S_w_plus[edge] + S_w_minus[edge];
 						double prob = 0.0;
 						int parent = edge.first;
+						if (graph.edgeMapping[edge.first].find(edge.second) == graph.edgeMapping[edge.first].end()){
+							cout << "BIGERROR" << endl;
+							exit(0);
+						}
 						int node = graph.edgeMapping[edge.first][edge.second];
 						if(isPositiveParent[edge]){
 							prob = (graph.probEstimate[parent][node])/(P_w[edge.second]);
@@ -304,7 +308,7 @@ class MAB{
 								graph.probEstimate[parent][node] = S_w_plus[edge]/denominator;
 							}
 						}
-						graph.probTEstimate[edge.second][graph.edgeMapping[edge.second][edge.first]] = graph.probEstimate[parent][node];
+						graph.probTEstimate[edge.second][graph.edgeTMapping[edge.second][edge.first]] = graph.probEstimate[parent][node];
 						key = edge;
 					}
 				}
@@ -333,7 +337,7 @@ int main(int argn, char ** argv)
 	// seeds.push_back(1);
 	// seeds.push_back(2);
 	// tic.expectedSpread(graph, seeds, 100, true);
-	MAB mab(30);
+	MAB mab(50);
 	mab.learner(graph, 0, 20000);
 
 }

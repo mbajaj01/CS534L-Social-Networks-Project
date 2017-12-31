@@ -64,7 +64,8 @@ class TimGraph: public InfGraph
         }
         void EstimateOPT(double epsilon){
             Timer t(100,"EstimateOPT");
-
+            visit_mark=vector<int>(n);
+            visit=vector<bool>(n);
 
             // KPT estimation
             double kpt_star;

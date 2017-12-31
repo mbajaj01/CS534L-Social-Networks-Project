@@ -15,6 +15,7 @@ class Graph
         vector<vector<double>> probEstimate;
         vector<vector<double>> probTEstimate;
         map<int, map<int,int>> edgeMapping;
+        map<int, map<int,int>> edgeTMapping;
         vector<bool> visit;
         vector<int> visit_mark;
         enum InfluModel {IC, LT};
@@ -46,11 +47,12 @@ class Graph
         }
         void add_edge(int a, int b, double p){
             edgeMapping[a][b] = g[a].size();
+            edgeTMapping[b][a] = gT[b].size();
             probT[b].push_back(p);
             prob[a].push_back(p);
             double randomNum = (double)rand()/(RAND_MAX);
-            probEstimate[a].push_back(randomNum);
-            probTEstimate[b].push_back(randomNum);
+            probEstimate[a].push_back(0.0);
+            probTEstimate[b].push_back(0.0);
             gT[b].push_back(a);
             g[a].push_back(b);
             inDeg[b]++;
@@ -93,6 +95,7 @@ class Graph
                 probEstimate.push_back(vector<double>());
                 probTEstimate.push_back(vector<double>());
                 edgeMapping[i] = map<int,int>();
+                edgeTMapping[i] = map<int,int>();
                 //hyperGT.push_back(vector<int>());
                 inDeg.push_back(0);
             }
