@@ -53,13 +53,16 @@ class Graph
             prob[a].push_back(vector<double>());
             probEstimate[a].push_back(vector<double>());
             probTEstimate[b].push_back(vector<double>());
+            // cout << a << " " << b << " ";
             for(int i=0;i<(int)p.size();i++){
                 double randomNum = (double)rand()/(RAND_MAX);
                 probT[b][probT[b].size() - 1].push_back(p[i]);
                 prob[a][prob[a].size() - 1].push_back(p[i]);
-                probEstimate[a][probEstimate[a].size() - 1].push_back(randomNum);
-                probTEstimate[b][probTEstimate[b].size() - 1].push_back(randomNum);
+                // cout << p[i] << " ";
+                probEstimate[a][probEstimate[a].size() - 1].push_back(randomNum/1000);
+                probTEstimate[b][probTEstimate[b].size() - 1].push_back(randomNum/1000);
             }
+            // cout << endl;
             gT[b].push_back(a);
             g[a].push_back(b);
             inDeg[b]++;

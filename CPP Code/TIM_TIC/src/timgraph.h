@@ -59,13 +59,15 @@ class TimGraph: public InfGraph
             Timer t(3, "step3");
             ASSERT(opt > 0);
             int64 R = (8+2 * epsilon) * ( log(n) + log(2) +  n * logcnk(n, k) ) / ( epsilon * epsilon * opt);
+            // cout << "RR Sets: "<< R<< endl;
             BuildHypergraphR(R);
             BuildSeedSet();
         }
         void EstimateOPT(double epsilon){
             Timer t(100,"EstimateOPT");
-
-
+            visit_mark=vector<int>(n);
+            visit=vector<bool>(n);
+            
             // KPT estimation
             double kpt_star;
             kpt_star=KptEstimation();
