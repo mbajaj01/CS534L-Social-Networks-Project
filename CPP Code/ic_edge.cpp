@@ -6,6 +6,7 @@
 #include <random>
 #include <iterator>
 #include <algorithm>
+#include <fstream>
 
 TimGraph generateGraph(string dataset, string graph_file, int budget, double epsilon=0.1){
 	cout<<"Generating Graph"<<endl;
@@ -226,6 +227,8 @@ class MAB{
 		    map<pair<int,int>, int> S_w_minus;
 		    map<pair<int,int>, bool> S_w;
 		    trueSeeds = exploit(graph,true);
+		    ofstream myfile;
+ 			myfile.open ("nethept_edge_EGreedy_50seeds_1000iter");
 		    // for (int i=0 ;i< trueSeeds.size(); i++){
 		    // 	cout << trueSeeds[i] << " ";
 		    // }
@@ -241,6 +244,8 @@ class MAB{
 				regretIter += ic.compareRegret(graph, trueSeeds, banditSeeds);
 			}
 			regret += regretIter/3;
+			double l2base = L2Error(graph);
+			myfile << (l2base/l2base) << "," << regret << "\n";
 			for(int t=0; t<iterations;t++){
 				double randomNumber = (double)dist(mt);
 				banditSeeds = epsilonGreedy(graph, epsilon, randomNumber, banditSeeds);
@@ -251,6 +256,7 @@ class MAB{
 					int node = nodeIterator->first;
 					long double prob = 1.0;
 					map<int, int>::iterator parentIterator;
+					int numPositive = 0.0;
 					for(parentIterator=ic.influencedNeighbours[node].begin(); parentIterator != ic.influencedNeighbours[node].end(); parentIterator++){
 						int parent = parentIterator->first;
 						int j = graph.edgeMapping[parent][node];
@@ -266,6 +272,7 @@ class MAB{
 								prob *= 1.0 - graph.probEstimate[parent][j];
 								S_w_plus[edge] += 1.0;
 								isPositiveParent[edge] = true;
+								numPositive += 1;
 							}else{
 								S_w_minus[edge] += 1.0;
 							}
@@ -282,6 +289,10 @@ class MAB{
 							P_w[node] = 1.0;
 						}
 
+					}
+					if(numPositive > 1){
+						cout << "BIGERROR" << endl;
+						exit(0); 
 					}
 				}
 				
@@ -301,12 +312,12 @@ class MAB{
 						int node = graph.edgeMapping[edge.first][edge.second];
 						if(isPositiveParent[edge]){
 							prob = (graph.probEstimate[parent][node])/(P_w[edge.second]);
-							if(prob > 1.0001){
-								cout << "Error " << prob << " " << S_w_plus[edge] << " " << S_w_minus[edge]<< endl;
-							}
-							// if(prob > 1){
-							// 	prob = 1.0;
+							// if(prob != 0 && prob != 1){
+							// 	cout << "Error " << prob << " " << S_w_plus[edge] << " " << S_w_minus[edge]<< endl;
 							// }
+							if(prob > 1){
+								prob = 1.0;
+							}
 							
 						}
 						graph.probEstimate[parent][node] = graph.probEstimate[parent][node] + ((prob - graph.probEstimate[parent][node])/(denominator));
@@ -325,11 +336,14 @@ class MAB{
 					regretIter += ic.compareRegret(graph, trueSeeds, banditSeeds);
 				}
 				regret += regretIter/3;
-				cout << L2Error(graph) << " "<<regret/(t+2)<< endl;
-				
+				double l2 = L2Error(graph);
+				cout << l2 << " "<<regret/(t+2)<< endl;
+				myfile << (l2/l2base) << "," << regret/(t+2) << "\n";
 			}
+			myfile.close();
 
 		}
+
 
 };
 
@@ -338,13 +352,13 @@ int main(int argn, char ** argv)
 {
 	string dataset = "TIM/nethept/";
 	string graph_file = dataset + "graph_ic.inf";
-	TimGraph graph = generateGraph(dataset, graph_file, 10);
+	TimGraph graph = generateGraph(dataset, graph_file, 50);
 	// TIC tic();
 	// vector<int> seeds;
 	// seeds.push_back(1);
 	// seeds.push_back(2);
 	// tic.expectedSpread(graph, seeds, 100, true);
 	MAB mab(50);
-	mab.learner(graph, 0, 20000);
+	mab.learner(graph, 0.5, 1000);
 
 }
