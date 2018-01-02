@@ -1,12 +1,21 @@
 import matplotlib.pyplot as plt
 
-
-exploit_file = 'log_0.000000graph_ic.inf' # seems like mohit has named the files wrong
-ep_greedy = 'log_0.500000graph_ic.inf' # so I have swapped his explore and exploit
-explore_file = 'log_1.000000graph_ic.inf'
+# NETHEPT
 baseline_highdeg='nethept_highdegree_50seeds_1000iter'
 baseline_random='nethept_random_50seeds_1000iter'
-name = 'nethept_node'
+
+#IC node
+# exploit_file = 'log_0.000000graph_ic.inf' # seems like mohit has named the files wrong
+# ep_greedy = 'log_0.500000graph_ic.inf' # so I have swapped his explore and exploit
+# explore_file = 'log_1.000000graph_ic.inf'
+# name = 'nethept_node'
+
+#IC edge
+exploit_file = 'nethept_edge_PExp_50seeds_1000iter'
+ep_greedy = 'nethept_edge_EGreedy_50seeds_1000iter'
+explore_file = 'nethept_edge_PExplore_50seeds_1000iter'
+name = 'nethept_edge'
+
 
 strdata1 = open(baseline_highdeg, 'rb').read().split('\n')
 strdata2 = open(baseline_random, 'rb').read().split('\n')
@@ -37,7 +46,7 @@ for i,datum in enumerate(strdata1):
 
 # print regret1_marker
 # print regret1
-# exit()
+#exit()
 
 highdegregret = regret1
 randomregret = regret2
@@ -62,18 +71,19 @@ l13 = []
 l11_markers = []
 l12_markers = []
 l13_markers = []
-idl1 = 1
+idl1 = 0
 regret1 = [] 
 regret2 = []
 regret3 = []
 regret1_markers = [] 
 regret2_markers = []
 regret3_markers = []
-idregret = 2
+idregret = 1
 iterations = []
 iterations_markers = []
 count = 0
 count_markers = 0
+sep = ','
 
 print len(highdegregret)
 
@@ -81,12 +91,12 @@ for i,datum in enumerate(strdata1):
 	if (i%2==0) and (i%3==0) and (i%4==0) and (i%6==0) and (i%8==0) and (i%12==0) and (i%16==0):
 		if count_markers < len(highdegregret_markers):
 			try:
-				l11_markers.append(float(strdata1[i].split(' ')[idl1]))
-				l12_markers.append(float(strdata2[i].split(' ')[idl1]))
-				l13_markers.append(float(strdata3[i].split(' ')[idl1]))
-				regret1_markers.append(float(strdata1[i].split(' ')[idregret]))
-				regret2_markers.append(float(strdata2[i].split(' ')[idregret]))
-				regret3_markers.append(float(strdata3[i].split(' ')[idregret]))
+				l11_markers.append(float(strdata1[i].split(sep)[idl1]))
+				l12_markers.append(float(strdata2[i].split(sep)[idl1]))
+				l13_markers.append(float(strdata3[i].split(sep)[idl1]))
+				regret1_markers.append(float(strdata1[i].split(sep)[idregret]))
+				regret2_markers.append(float(strdata2[i].split(sep)[idregret]))
+				regret3_markers.append(float(strdata3[i].split(sep)[idregret]))
 				iterations_markers.append(i+1)
 				count_markers = count_markers + 1
 			except:
@@ -94,12 +104,12 @@ for i,datum in enumerate(strdata1):
 	
 	if count < len(highdegregret):
 		try:
-			l11.append(float(strdata1[i].split(' ')[idl1]))
-			l12.append(float(strdata2[i].split(' ')[idl1]))
-			l13.append(float(strdata3[i].split(' ')[idl1]))
-			regret1.append(float(strdata1[i].split(' ')[idregret]))
-			regret2.append(float(strdata2[i].split(' ')[idregret]))
-			regret3.append(float(strdata3[i].split(' ')[idregret]))
+			l11.append(float(strdata1[i].split(sep)[idl1]))
+			l12.append(float(strdata2[i].split(sep)[idl1]))
+			l13.append(float(strdata3[i].split(sep)[idl1]))
+			regret1.append(float(strdata1[i].split(sep)[idregret]))
+			regret2.append(float(strdata2[i].split(sep)[idregret]))
+			regret3.append(float(strdata3[i].split(sep)[idregret]))
 			iterations.append(i+1)
 			count = count + 1
 		except:
