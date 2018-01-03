@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 
-# NETHEPT
-baseline_highdeg='nethept_highdegree_50seeds_1000iter'
-baseline_random='nethept_random_50seeds_1000iter'
+########## NETHEPT ##############
+# baseline_highdeg='nethept_highdegree_50seeds_1000iter'
+# baseline_random='nethept_random_50seeds_1000iter'
 
 #IC node
 # exploit_file = 'log_0.000000graph_ic.inf' # seems like mohit has named the files wrong
@@ -11,18 +11,37 @@ baseline_random='nethept_random_50seeds_1000iter'
 # name = 'nethept_node'
 
 #IC edge
-exploit_file = 'nethept_edge_PExp_50seeds_1000iter'
-ep_greedy = 'nethept_edge_EGreedy_50seeds_1000iter'
-explore_file = 'nethept_edge_PExplore_50seeds_1000iter'
-name = 'nethept_edge'
+# exploit_file = 'nethept_edge_PExp_50seeds_1000iter'
+# ep_greedy = 'nethept_edge_EGreedy_50seeds_1000iter'
+# explore_file = 'nethept_edge_PExplore_50seeds_1000iter'
+# name = 'nethept_edge'
+
+########## SYNTH ##############
+baseline_highdeg='synth_highDegree_50seeds_1000iter'
+baseline_random='synth_random_50seeds_1000iter'
 
 
+#IC edge
+# exploit_file = 'log_synth_edge_0.txt'
+# ep_greedy = 'log_synth_edge_0.5.txt'
+# explore_file = 'log_synth_edge_1.txt'
+# name = 'synth_edge'
+
+#IC node
+# exploit_file = 'log_0.000000synth_5000_l.txt'
+# ep_greedy = 'log_0.500000synth_5000_l.txt'
+# explore_file = 'log_1.000000synth_5000_l.txt'
+# name = 'synth_node'
+
+
+
+
+
+################## PLOTING CODE #######################
 strdata1 = open(baseline_highdeg, 'rb').read().split('\n')
 strdata2 = open(baseline_random, 'rb').read().split('\n')
 size = len(strdata1)
 
-
-################## PLOT MAIN CURVE #######################
 
 regret1 = []
 regret2 = []
@@ -71,19 +90,19 @@ l13 = []
 l11_markers = []
 l12_markers = []
 l13_markers = []
-idl1 = 0
+idl1 = 1
 regret1 = [] 
 regret2 = []
 regret3 = []
 regret1_markers = [] 
 regret2_markers = []
 regret3_markers = []
-idregret = 1
+idregret = 2
 iterations = []
 iterations_markers = []
 count = 0
 count_markers = 0
-sep = ','
+sep = ' '
 
 print len(highdegregret)
 
@@ -158,10 +177,10 @@ plt.title('Relative error vs rounds')
 # plot markers
 plt.plot(iterations_markers,l11_markers,'bo')
 plt.plot(iterations_markers,l12_markers,'s',color='DarkOrange')
-plt.plot(iterations_markers,l13_markers,'gx')
+plt.plot(iterations_markers,l13_markers,'gp',markersize=7)
 
 plt.savefig(name + '_l1.png')
-#plt.show()
+plt.show()
 
 # PLOT REGRET
 
@@ -190,11 +209,11 @@ plt.ylabel('Average regret')
 plt.title('Average regret vs rounds')
 
 # plot markers
-plt.plot(iterations_markers_baseline,randomregret_markers,'r*')
-plt.plot(iterations_markers_baseline,highdegregret_markers,'2',color='purple')
+plt.plot(iterations_markers_baseline,randomregret_markers,'r*',markersize=8)
+plt.plot(iterations_markers_baseline,highdegregret_markers,'x',color='purple',markersize=6)
 plt.plot(iterations_markers,regret1_markers,'bo')
 plt.plot(iterations_markers,regret2_markers,'s',color='DarkOrange')
-plt.plot(iterations_markers,regret3_markers,'gx')
+plt.plot(iterations_markers,regret3_markers,'gp',markersize=7)
 
 plt.savefig(name + '_regret.png')
 plt.show()
