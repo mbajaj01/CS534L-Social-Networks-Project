@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 # name = 'nethept_edge'
 
 ########## SYNTH ##############
-baseline_highdeg='synth_highDegree_50seeds_1000iter'
-baseline_random='synth_random_50seeds_1000iter'
+# baseline_highdeg='synth_highDegree_50seeds_1000iter'
+# baseline_random='synth_random_50seeds_1000iter'
 
 
 #IC edge
@@ -33,6 +33,22 @@ baseline_random='synth_random_50seeds_1000iter'
 # explore_file = 'log_1.000000synth_5000_l.txt'
 # name = 'synth_node'
 
+
+########## WIKIDATA ############
+# baseline_highdeg='wikiData_highDegree_50seeds_1000iter'
+# baseline_random='wikiData_random_50seeds_1000iter'
+
+#IC edge
+# exploit_file = 'wiki_edge_Exploit_50seeds_1000iter'
+# ep_greedy = 'wiki_edge_EGreedy_50seeds_1000iter'
+# explore_file = 'wiki_edge_Explore_50seeds_1000iter'
+# name = 'wiki_edge'
+
+#IC node
+# exploit_file = 'wiki_node_Exploit_50seeds_1000iter'
+# ep_greedy = 'wiki_node_Egreedy_50seeds_1000iter'
+# explore_file = 'wiki_node_Explore_50seeds_1000iter'
+# name = 'wiki_node'
 
 
 
@@ -90,19 +106,19 @@ l13 = []
 l11_markers = []
 l12_markers = []
 l13_markers = []
-idl1 = 1
+idl1 = 0
 regret1 = [] 
 regret2 = []
 regret3 = []
 regret1_markers = [] 
 regret2_markers = []
 regret3_markers = []
-idregret = 2
+idregret = 1
 iterations = []
 iterations_markers = []
 count = 0
 count_markers = 0
-sep = ' '
+sep = ','
 
 print len(highdegregret)
 
