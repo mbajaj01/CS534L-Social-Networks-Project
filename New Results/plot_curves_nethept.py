@@ -1,36 +1,48 @@
 import matplotlib.pyplot as plt
 
 ########## NETHEPT ##############
-baseline_highdeg='nethept_highdegree_50seeds_1000iter'
-baseline_random='nethept_random_50seeds_1000iter'
 
 #TIC node
+# NORMALIZE YES
+# baseline_highdeg='nethept_HighDegree_50seeds_1000iter_10items_10topics'
+# baseline_random='nethept_random_50seeds_1000iter_10items_10topics'
 # exploit_file = 'nethept_tic_node_Exploit_50seeds_1000iter_10items_10topics'
 # ep_greedy = 'nethept_tic_node_EGreedy_50seeds_1000iter_10items_10topics'
 # explore_file = 'nethept_tic_node_Explore_50seeds_1000iter_10items_10topics'
 # name = 'tic_nethept_node_10_10'
 
+# baseline_highdeg='nethept_HighDegree_50seeds_1000iter_10items_5topics'
+# baseline_random='nethept_random_50seeds_1000iter_10items_5topics'
 # exploit_file = 'nethept_tic_node_Exploit_50seeds_1000iter_10items_5topics'
 # ep_greedy = 'nethept_tic_node_EGreedy_50seeds_1000iter_10items_5topics'
 # explore_file = 'nethept_tic_node_Explore_50seeds_1000iter_10items_5topics'
 # name = 'tic_nethept_node_10_5'
 
+# NORMALIZE YES
+# baseline_highdeg='nethept_HighDegree_50seeds_1000iter_5items_10topics'
+# baseline_random='nethept_random_50seeds_1000iter_5items_10topics'
 # exploit_file = 'nethept_tic_node_Exploit_50seeds_1000iter_5items_10topics'
 # ep_greedy = 'nethept_tic_node_EGreedy_50seeds_1000iter_5items_10topics'
 # explore_file = 'nethept_tic_node_Explore_50seeds_1000iter_5items_10topics'
 # name = 'tic_nethept_node_5_10'
 
 #TIC edge
+# baseline_highdeg='nethept_HighDegree_50seeds_1000iter_10items_10topics'
+# baseline_random='nethept_random_50seeds_1000iter_10items_10topics'
 # exploit_file = 'nethept_tic_edge_Exploit_50seeds_1000iter_10items_10topics'
 # ep_greedy = 'nethept_tic_edge_EGreedy_50seeds_1000iter_10items_10topics'
 # explore_file = 'nethept_tic_edge_Explore_50seeds_1000iter_10items_10topics'
 # name = 'tic_nethept_edge_10_10'
 
+# baseline_highdeg='nethept_HighDegree_50seeds_1000iter_10items_5topics'
+# baseline_random='nethept_random_50seeds_1000iter_10items_5topics'
 # exploit_file = 'nethept_tic_edge_Exploit_50seeds_1000iter_10items_5topics'
 # ep_greedy = 'nethept_tic_edge_EGreedy_50seeds_1000iter_10items_5topics'
 # explore_file = 'nethept_tic_edge_Explore_50seeds_1000iter_10items_5topics'
 # name = 'tic_nethept_edge_10_5'
 
+# baseline_highdeg='nethept_HighDegree_50seeds_1000iter_5items_10topics'
+# baseline_random='nethept_random_50seeds_1000iter_5items_10topics'
 # exploit_file = 'nethept_tic_edge_Exploit_50seeds_1000iter_5items_10topics'
 # ep_greedy = 'nethept_tic_edge_EGreedy_50seeds_1000iter_5items_10topics'
 # explore_file = 'nethept_tic_edge_Explore_50seeds_1000iter_5items_10topics'
@@ -38,8 +50,8 @@ baseline_random='nethept_random_50seeds_1000iter'
 
 
 ########## SYNTH ##############
-# baseline_highdeg='synth_highDegree_50seeds_1000iter'
-# baseline_random='synth_random_50seeds_1000iter'
+baseline_highdeg='synth_HighDegree_50seeds_1000iter_10items_10topics'
+baseline_random='synth_random_50seeds_1000iter_10items_10topics'
 
 
 #TIC edge
@@ -49,10 +61,10 @@ baseline_random='nethept_random_50seeds_1000iter'
 # name = 'tic_synth_edge_10_10'
 
 #TIC node
-# exploit_file = 'synth_tic_node_Exploit_50seeds_1000iter_10items_10topics'
-# ep_greedy = 'synth_tic_node_EGreedy_50seeds_1000iter_10items_10topics'
-# explore_file = 'synth_tic_node_Explore_50seeds_1000iter_10items_10topics'
-# name = 'tic_synth_node_10_10'
+exploit_file = 'synth_tic_node_Exploit_50seeds_1000iter_10items_10topics'
+ep_greedy = 'synth_tic_node_EGreedy_50seeds_1000iter_10items_10topics'
+explore_file = 'synth_tic_node_Explore_50seeds_1000iter_10items_10topics'
+name = 'tic_synth_node_10_10'
 
 ################## PLOTING CODE #######################
 strdata1 = open(baseline_highdeg, 'rb').read().split('\n')
@@ -64,7 +76,7 @@ regret1 = []
 regret2 = []
 regret1_marker = []
 regret2_marker = []
-idregret = 1
+idregret = 2
 iterations_markers_baseline = []
 for i,datum in enumerate(strdata1):
 	if (i%2==0) and (i%3==0) and (i%4==0) and (i%6==0) and (i%8==0) and (i%12==0) and (i%16==0):
@@ -140,9 +152,12 @@ for i,datum in enumerate(strdata1):
 				dotl11_markers.append(float(strdata1[i].split(sep)[dotidl1]))
 				dotl12_markers.append(float(strdata2[i].split(sep)[dotidl1]))
 				dotl13_markers.append(float(strdata3[i].split(sep)[dotidl1]))
-				regret1_markers.append(float(strdata1[i].split(sep)[idregret])/(i+1))
-				regret2_markers.append(float(strdata2[i].split(sep)[idregret])/(i+1))
-				regret3_markers.append(float(strdata3[i].split(sep)[idregret])/(i+1))
+				regret1_markers.append(float(strdata1[i].split(sep)[idregret]))
+				regret2_markers.append(float(strdata2[i].split(sep)[idregret]))
+				regret3_markers.append(float(strdata3[i].split(sep)[idregret]))
+				# regret1_markers.append(float(strdata1[i].split(sep)[idregret])/(i+1))
+				# regret2_markers.append(float(strdata2[i].split(sep)[idregret])/(i+1))
+				# regret3_markers.append(float(strdata3[i].split(sep)[idregret])/(i+1))
 				iterations_markers.append(i+1)
 				count_markers = count_markers + 1
 			except:
@@ -156,9 +171,12 @@ for i,datum in enumerate(strdata1):
 			dotl11.append(float(strdata1[i].split(sep)[dotidl1]))
 			dotl12.append(float(strdata2[i].split(sep)[dotidl1]))
 			dotl13.append(float(strdata3[i].split(sep)[dotidl1]))
-			regret1.append(float(strdata1[i].split(sep)[idregret])/(i+1))
-			regret2.append(float(strdata2[i].split(sep)[idregret])/(i+1))
-			regret3.append(float(strdata3[i].split(sep)[idregret])/(i+1))
+			regret1.append(float(strdata1[i].split(sep)[idregret]))
+			regret2.append(float(strdata2[i].split(sep)[idregret]))
+			regret3.append(float(strdata3[i].split(sep)[idregret]))
+			# regret1.append(float(strdata1[i].split(sep)[idregret])/(i+1))
+			# regret2.append(float(strdata2[i].split(sep)[idregret])/(i+1))
+			# regret3.append(float(strdata3[i].split(sep)[idregret])/(i+1))
 			iterations.append(i+1)
 			count = count + 1
 		except:
@@ -220,7 +238,7 @@ plt.grid(True)
 plt.legend(['Pure exploitation','Epsilon - 0.5','Pure exploration'])
 plt.xlabel('Rounds')
 plt.ylabel('Relative error')
-plt.title('Relative error vs rounds')
+plt.title('Relative error across topics vs rounds')
 
 # plot markers
 plt.plot(iterations_markers,dotl11_markers,'bo')
