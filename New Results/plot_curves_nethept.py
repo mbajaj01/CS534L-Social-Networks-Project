@@ -1,55 +1,58 @@
 import matplotlib.pyplot as plt
 
 ########## NETHEPT ##############
-# baseline_highdeg='nethept_highdegree_50seeds_1000iter'
-# baseline_random='nethept_random_50seeds_1000iter'
+baseline_highdeg='nethept_highdegree_50seeds_1000iter'
+baseline_random='nethept_random_50seeds_1000iter'
 
-#IC node
-# exploit_file = 'log_0.000000graph_ic.inf' # seems like mohit has named the files wrong
-# ep_greedy = 'log_0.500000graph_ic.inf' # so I have swapped his explore and exploit
-# explore_file = 'log_1.000000graph_ic.inf'
-# name = 'nethept_node'
+#TIC node
+# exploit_file = 'nethept_tic_node_Exploit_50seeds_1000iter_10items_10topics'
+# ep_greedy = 'nethept_tic_node_EGreedy_50seeds_1000iter_10items_10topics'
+# explore_file = 'nethept_tic_node_Explore_50seeds_1000iter_10items_10topics'
+# name = 'tic_nethept_node_10_10'
 
-#IC edge
-# exploit_file = 'nethept_edge_PExp_50seeds_1000iter'
-# ep_greedy = 'nethept_edge_EGreedy_50seeds_1000iter'
-# explore_file = 'nethept_edge_PExplore_50seeds_1000iter'
-# name = 'nethept_edge'
+# exploit_file = 'nethept_tic_node_Exploit_50seeds_1000iter_10items_5topics'
+# ep_greedy = 'nethept_tic_node_EGreedy_50seeds_1000iter_10items_5topics'
+# explore_file = 'nethept_tic_node_Explore_50seeds_1000iter_10items_5topics'
+# name = 'tic_nethept_node_10_5'
+
+# exploit_file = 'nethept_tic_node_Exploit_50seeds_1000iter_5items_10topics'
+# ep_greedy = 'nethept_tic_node_EGreedy_50seeds_1000iter_5items_10topics'
+# explore_file = 'nethept_tic_node_Explore_50seeds_1000iter_5items_10topics'
+# name = 'tic_nethept_node_5_10'
+
+#TIC edge
+# exploit_file = 'nethept_tic_edge_Exploit_50seeds_1000iter_10items_10topics'
+# ep_greedy = 'nethept_tic_edge_EGreedy_50seeds_1000iter_10items_10topics'
+# explore_file = 'nethept_tic_edge_Explore_50seeds_1000iter_10items_10topics'
+# name = 'tic_nethept_edge_10_10'
+
+# exploit_file = 'nethept_tic_edge_Exploit_50seeds_1000iter_10items_5topics'
+# ep_greedy = 'nethept_tic_edge_EGreedy_50seeds_1000iter_10items_5topics'
+# explore_file = 'nethept_tic_edge_Explore_50seeds_1000iter_10items_5topics'
+# name = 'tic_nethept_edge_10_5'
+
+# exploit_file = 'nethept_tic_edge_Exploit_50seeds_1000iter_5items_10topics'
+# ep_greedy = 'nethept_tic_edge_EGreedy_50seeds_1000iter_5items_10topics'
+# explore_file = 'nethept_tic_edge_Explore_50seeds_1000iter_5items_10topics'
+# name = 'tic_nethept_edge_5_10'
+
 
 ########## SYNTH ##############
-baseline_highdeg='synth_highDegree_50seeds_1000iter'
-baseline_random='synth_random_50seeds_1000iter'
+# baseline_highdeg='synth_highDegree_50seeds_1000iter'
+# baseline_random='synth_random_50seeds_1000iter'
 
 
-#IC edge
-# exploit_file = 'log_synth_edge_0.txt'
-# ep_greedy = 'log_synth_edge_0.5.txt'
-# explore_file = 'log_synth_edge_1.txt'
-# name = 'synth_edge'
+#TIC edge
+# exploit_file = 'synth_tic_edge_Exploit_50seeds_1000iter_10items_10topics'
+# ep_greedy = 'synth_tic_edge_EGreedy_50seeds_1000iter_10items_10topics'
+# explore_file = 'synth_tic_edge_Explore_50seeds_1000iter_10items_10topics'
+# name = 'tic_synth_edge_10_10'
 
-#IC node
-exploit_file = 'log_0.000000synth_5000_l.txt'
-ep_greedy = 'log_0.500000synth_5000_l.txt'
-explore_file = 'log_1.000000synth_5000_l.txt'
-name = 'synth_node'
-
-
-########## WIKIDATA ############
-# baseline_highdeg='wikiData_highDegree_50seeds_1000iter'
-# baseline_random='wikiData_random_50seeds_1000iter'
-
-#IC edge
-# exploit_file = 'wiki_edge_Exploit_50seeds_1000iter'
-# ep_greedy = 'wiki_edge_EGreedy_50seeds_1000iter'
-# explore_file = 'wiki_edge_Explore_50seeds_1000iter'
-# name = 'wiki_edge'
-
-#IC node
-# exploit_file = 'wiki_node_Exploit_50seeds_1000iter'
-# ep_greedy = 'wiki_node_Egreedy_50seeds_1000iter'
-# explore_file = 'wiki_node_Explore_50seeds_1000iter'
-# name = 'wiki_node'
-
+#TIC node
+# exploit_file = 'synth_tic_node_Exploit_50seeds_1000iter_10items_10topics'
+# ep_greedy = 'synth_tic_node_EGreedy_50seeds_1000iter_10items_10topics'
+# explore_file = 'synth_tic_node_Explore_50seeds_1000iter_10items_10topics'
+# name = 'tic_synth_node_10_10'
 
 ################## PLOTING CODE #######################
 strdata1 = open(baseline_highdeg, 'rb').read().split('\n')
@@ -104,7 +107,14 @@ l13 = []
 l11_markers = []
 l12_markers = []
 l13_markers = []
-idl1 = 1
+idl1 = 0
+dotl11 = []
+dotl12 = []
+dotl13 = []
+dotl11_markers = []
+dotl12_markers = []
+dotl13_markers = []
+dotidl1 = 1
 regret1 = [] 
 regret2 = []
 regret3 = []
@@ -116,7 +126,7 @@ iterations = []
 iterations_markers = []
 count = 0
 count_markers = 0
-sep = ' '
+sep = ','
 
 print len(highdegregret)
 
@@ -127,9 +137,12 @@ for i,datum in enumerate(strdata1):
 				l11_markers.append(float(strdata1[i].split(sep)[idl1]))
 				l12_markers.append(float(strdata2[i].split(sep)[idl1]))
 				l13_markers.append(float(strdata3[i].split(sep)[idl1]))
-				regret1_markers.append(float(strdata1[i].split(sep)[idregret]))
-				regret2_markers.append(float(strdata2[i].split(sep)[idregret]))
-				regret3_markers.append(float(strdata3[i].split(sep)[idregret]))
+				dotl11_markers.append(float(strdata1[i].split(sep)[dotidl1]))
+				dotl12_markers.append(float(strdata2[i].split(sep)[dotidl1]))
+				dotl13_markers.append(float(strdata3[i].split(sep)[dotidl1]))
+				regret1_markers.append(float(strdata1[i].split(sep)[idregret])/(i+1))
+				regret2_markers.append(float(strdata2[i].split(sep)[idregret])/(i+1))
+				regret3_markers.append(float(strdata3[i].split(sep)[idregret])/(i+1))
 				iterations_markers.append(i+1)
 				count_markers = count_markers + 1
 			except:
@@ -140,9 +153,12 @@ for i,datum in enumerate(strdata1):
 			l11.append(float(strdata1[i].split(sep)[idl1]))
 			l12.append(float(strdata2[i].split(sep)[idl1]))
 			l13.append(float(strdata3[i].split(sep)[idl1]))
-			regret1.append(float(strdata1[i].split(sep)[idregret]))
-			regret2.append(float(strdata2[i].split(sep)[idregret]))
-			regret3.append(float(strdata3[i].split(sep)[idregret]))
+			dotl11.append(float(strdata1[i].split(sep)[dotidl1]))
+			dotl12.append(float(strdata2[i].split(sep)[dotidl1]))
+			dotl13.append(float(strdata3[i].split(sep)[dotidl1]))
+			regret1.append(float(strdata1[i].split(sep)[idregret])/(i+1))
+			regret2.append(float(strdata2[i].split(sep)[idregret])/(i+1))
+			regret3.append(float(strdata3[i].split(sep)[idregret])/(i+1))
 			iterations.append(i+1)
 			count = count + 1
 		except:
@@ -177,6 +193,7 @@ print len(iterations)
 print len (iterations)
 print len (randomregret)
 
+#L1
 
 plt.plot(iterations,l11,'b')
 plt.plot(iterations,l12,color='DarkOrange')
@@ -194,6 +211,25 @@ plt.plot(iterations_markers,l13_markers,'gp',markersize=7)
 
 plt.savefig(name + '_l1.png')
 plt.show()
+
+# Dot l1
+plt.plot(iterations,dotl11,'b')
+plt.plot(iterations,dotl12,color='DarkOrange')
+plt.plot(iterations,dotl13,'g')
+plt.grid(True)
+plt.legend(['Pure exploitation','Epsilon - 0.5','Pure exploration'])
+plt.xlabel('Rounds')
+plt.ylabel('Relative error')
+plt.title('Relative error vs rounds')
+
+# plot markers
+plt.plot(iterations_markers,dotl11_markers,'bo')
+plt.plot(iterations_markers,dotl12_markers,'s',color='DarkOrange')
+plt.plot(iterations_markers,dotl13_markers,'gp',markersize=7)
+
+plt.savefig(name + '_dotl1.png')
+plt.show()
+
 
 # PLOT REGRET
 
